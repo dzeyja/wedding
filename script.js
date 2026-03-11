@@ -84,7 +84,91 @@ function setupMapLink() {
   });
 }
 
+function setupBubbles() {
+  const host = $("#bubbleBg");
+  if (!host) return;
+
+  const reduceMotion = window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches;
+  if (reduceMotion) return;
+
+  const isCoarse = window.matchMedia?.("(pointer: coarse)")?.matches;
+  const page = $("#page");
+  const rect = page ? page.getBoundingClientRect() : null;
+  const w = Math.max(320, Math.round(rect?.width || window.innerWidth || 360));
+  const h = Math.max(560, Math.round(rect?.height || window.innerHeight || 640));
+
+  const count = Math.round(Math.min(34, Math.max(14, (w * h) / 30000)));
+  const bubbles = [];
+
+  const rand = (a, b) => a + Math.random() * (b - a);
+
+  for (let i = 0; i < count; i++) {
+    const el = document.createElement("div");
+    el.className = "bubble";
+
+    const size = rand(22, 110);
+    const x = rand(-6, 106);
+    const a = rand(0.10, 0.34);
+    const scale = rand(0.85, 1.15);
+    const dur = rand(16, 38);
+    const delay = rand(-dur, 0);
+    const rise = rand(0, 220);
+    const drift = rand(-60, 60);
+    const sway = rand(-18, 18);
+    const swayDur = rand(3.5, 7.5);
+
+    el.style.setProperty("--size", String(size));
+    el.style.setProperty("--x", String(x));
+    el.style.setProperty("--a", String(a));
+    el.style.setProperty("--scale", String(scale));
+    el.style.setProperty("--dur", `${dur.toFixed(2)}s`);
+    el.style.setProperty("--delay", `${delay.toFixed(2)}s`);
+    el.style.setProperty("--rise", String(rise.toFixed(0)));
+    el.style.setProperty("--drift", String(drift.toFixed(1)));
+    el.style.setProperty("--sway", String(sway.toFixed(1)));
+    el.style.setProperty("--swayDur", `${swayDur.toFixed(2)}s`);
+    el.style.setProperty("--mx", "0");
+
+    host.appendChild(el);
+    bubbles.push(el);
+  }
+
+  if (isCoarse) return;
+
+  // Subtle parallax response to mouse movement (lightweight, throttled).
+  let targetX = 0;
+  let targetY = 0;
+  let raf = 0;
+
+  const apply = () => {
+    raf = 0;
+    const mx = targetX * 14;
+    const my = targetY * 10;
+    for (let i = 0; i < bubbles.length; i++) {
+      const k = (i % 9) / 9; // varied depth
+      bubbles[i].style.setProperty("--mx", String(mx * (0.18 + k * 0.22)));
+      bubbles[i].style.transform = `translate3d(0, ${my * (0.06 + k * 0.10)}px, 0)`;
+    }
+  };
+
+  window.addEventListener(
+    "mousemove",
+    (e) => {
+      const r = page ? page.getBoundingClientRect() : { left: 0, top: 0, width: window.innerWidth, height: window.innerHeight };
+      const cx = Math.min(Math.max(e.clientX - r.left, 0), r.width);
+      const cy = Math.min(Math.max(e.clientY - r.top, 0), r.height);
+      const nx = (cx / r.width) * 2 - 1;
+      const ny = (cy / r.height) * 2 - 1;
+      targetX = nx;
+      targetY = ny;
+      if (!raf) raf = window.requestAnimationFrame(apply);
+    },
+    { passive: true }
+  );
+}
+
 document.addEventListener("DOMContentLoaded", () => {
+  setupBubbles();
   setupRevealOnScroll();
   setupCountdown();
   setupRSVP();
